@@ -69,14 +69,8 @@ escapeLatex '\\' = "\\textbackslash{}"
 escapeLatex '{'  = "\\{"
 escapeLatex '}'  = "\\}"
 escapeLatex x    = cast x
-      
-decoration : Maybe Decoration -> String
-decoration Nothing         = "black"
-decoration (Just Typ     ) = "DeepSkyBlue3"
-decoration (Just Function) = "Chartreuse4"
-decoration (Just Data    ) = "IndianRed1"
-decoration (Just Keyword ) = "Azure4"
-decoration (Just Bound   ) = "DarkOrchid3"
+
+
 
 annotate : Maybe Decoration -> String -> String
 annotate Nothing    s = s
@@ -96,7 +90,7 @@ annotate (Just dec) s = apply (convert dec) s
 color : String -> String
 color x = "\\color{\{x}}" -- String interpolation doesn't quite work yet
 
-{- Relies on the fact that PosMap is an efficient mapping from position: 
+{- Relies on the fact that PosMap is an efficient mapping from position:
 
 for each character in the file, find the tightest enclosing interval
 in PosMap and use its decoration.
@@ -124,8 +118,7 @@ engine : (input, output : File)
 engine input output posMap = engine Nothing
   where
     toString : SnocList String -> String
-    toString Empty = ""
-    toString (Snoc sx x) = toString sx <+> x
+    toString = (fastConcat . asList)
 
     snocEscape : SnocList String -> Char -> SnocList String
     snocEscape sx c = Snoc sx (escapeLatex c)
@@ -152,12 +145,12 @@ engine input output posMap = engine Nothing
     engine : Maybe Decoration -> (Int, Int) -> IO ()
     engine currentDecor currentPos
       = if !(fEOF input)
-      then pure ()
-      else do
-        Right str <- fGetLine input
-          | Left err => pure ()
-        (nextDecor, nextPos) <- processLine currentDecor currentPos (fastUnpack str) Empty
-        engine nextDecor nextPos
+        then pure ()
+        else do
+          Right str <- fGetLine input
+            | Left err => pure ()
+          (nextDecor, nextPos) <- processLine currentDecor currentPos (fastUnpack str) Empty
+          engine nextDecor nextPos
 
 main : IO ()
 main = do
