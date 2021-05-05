@@ -6,20 +6,35 @@ import Data.List
 
 %default total
 
+infixl 7 :< , <>< 
+infixr 6 <>>
+
 public export
 data SnocList : (type : Type) -> Type where
   Empty : SnocList type
-  Snoc  : SnocList type -> type -> SnocList type
+  (:<)  : SnocList type -> type -> SnocList type
 
 %name SnocList sx, sy, sz
 
-||| Reverse the list and make a list.
+||| 'fish': Action of lists on snoc-lists
+public export
+(<><) : SnocList a -> List a -> SnocList a
+sx <>< [] = sx
+sx <>< (x :: xs) = sx :< x <>< xs
+
+||| 'chips': Action of snoc-lists on lists
+public export
+(<>>) : SnocList a -> List a -> List a
+Empty     <>> xs = xs
+(sx :< x) <>> xs = sx <>> x :: xs
+
+||| Reverse the snoc-list and make a list.
 public export
 toList : SnocList type -> List type
 toList Empty = Nil
-toList (Snoc sx x) = x :: toList sx
+toList (sx :< x) = x :: toList sx
 
-||| Transform to a list but keeping the contents in the 'correct' order.
+||| Transform to a list but keeping the contents in the 'correct' order (term depth).
 public export
 asList : SnocList type -> List type
 asList = (reverse . toList)
@@ -28,16 +43,16 @@ asList = (reverse . toList)
 public export
 Eq a => Eq (SnocList a) where
   (==) Empty Empty = True
-  (==) (Snoc sx x) (Snoc sy y) = x == y && sx == sy
+  (==) (sx :< x) (sy :< y) = x == y && sx == sy
   (==) _ _ = False
 
 
 public export
 Ord a => Ord (SnocList a) where
   compare Empty Empty = EQ
-  compare Empty (Snoc sx x) = LT
-  compare (Snoc sx x) Empty = GT
-  compare (Snoc sx x) (Snoc sy y)
+  compare Empty (sx :< x) = LT
+  compare (sx :< x) Empty = GT
+  compare (sx :< x) (sy :< y)
     = case compare sx sy of
         EQ => compare x y
         c  => c
@@ -45,17 +60,17 @@ Ord a => Ord (SnocList a) where
 public export
 (++) : (sx, sy : SnocList a) -> SnocList a
 (++) sx Empty = sx
-(++) sx (Snoc sy y) = Snoc (sx ++ sy) y
+(++) sx (sy :< y) = (sx ++ sy) :< y
 
 public export
 length : SnocList a -> Nat
 length Empty = Z
-length (Snoc sx x) = length sx + 1
+length (sx :< x) = length sx + 1
 
 public export
 Functor SnocList where
   map f Empty = Empty
-  map f (Snoc sx x) = Snoc (map f sx) (f x)
+  map f (sx :< x) = (map f sx) :< (f x)
 
 
 public export
@@ -71,7 +86,4 @@ Monoid (SnocList a) where
 public export
 elem : Eq a => a -> SnocList a -> Bool
 elem x Empty = False
-elem x (Snoc sx y) = x == y || elem x sx
-
-
--- [ EOF ]
+elem x (sx :< y) = x == y || elem x sx
