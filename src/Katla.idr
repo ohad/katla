@@ -59,9 +59,10 @@ Eq Decoration where
   _        == _        = False
 
 escapeLatex' : Char -> List Char
-escapeLatex' '\\' = unpack "\\textbackslash{}"
-escapeLatex' '{'  = unpack "\\{"
-escapeLatex' '}'  = unpack "\\}"
+escapeLatex' '\\' = fastUnpack "\\textbackslash{}"
+escapeLatex' '{'  = fastUnpack "\\{"
+escapeLatex' '}'  = fastUnpack "\\}"
+escapeLatex' '\n' = fastUnpack "}\n{"-- hack for now, probably going to mess up windows
 escapeLatex' x    = [x]
 
 escapeLatex : Char -> String
@@ -73,7 +74,7 @@ escapeLatex x    = cast x
 
 
 annotate : Maybe Decoration -> String -> String
-annotate Nothing    s = s
+annotate Nothing    s = "{\{s}}"
 annotate (Just dec) s = apply (convert dec) s
   where
 
@@ -117,27 +118,26 @@ engine : (input, output : File)
        -> IO ()
 engine input output posMap = engine Nothing
   where
-    toString : SnocList String -> String
-    toString = (fastConcat . asList)
+    toString : SnocList Char -> String
+    toString sx = (fastPack $ sx <>> [])
 
-    snocEscape : SnocList String -> Char -> SnocList String
-    snocEscape sx c = Snoc sx (escapeLatex c)
+    snocEscape : SnocList Char -> Char -> SnocList Char
+    snocEscape sx c = sx <>< (escapeLatex' c)
 
     processLine : Maybe Decoration
                -> (Int, Int)
                -> List Char
-               -> SnocList String
+               -> SnocList Char
                -> IO (Maybe Decoration, (Int, Int))
     processLine currentDecor (currentRow, _) [] stk
       = do let nextPos = (currentRow + 1, 0)
-           _ <- fPutStr output (toString stk)
+           _ <- fPutStr output (annotate currentDecor (toString stk))
            pure (currentDecor, nextPos)
     processLine currentDecor currentPos@(currentRow, currentCol) (c :: rest) stk
       = let nextPos = (currentRow, currentCol + 1)
             decor   = findDecoration currentPos posMap
         in if decor == currentDecor
            then processLine currentDecor nextPos rest (snocEscape stk c)
-
            else do let decorated = annotate currentDecor (toString stk)
                    _ <- fPutStr output decorated
                    processLine decor nextPos rest (snocEscape Empty c)
