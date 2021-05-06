@@ -57,6 +57,18 @@ Ord a => Ord (SnocList a) where
         EQ => compare x y
         c  => c
 
+||| True iff input is Empty
+public export
+isEmpty : SnocList a -> Bool
+isEmpty Empty = True
+isEmpty (sx :< x) = False
+
+||| True iff input is (:<)
+public export
+isSnoc : SnocList a -> Bool
+isSnoc Empty     = False
+isSnoc (sx :< x) = True
+
 public export
 (++) : (sx, sy : SnocList a) -> SnocList a
 (++) sx Empty = sx

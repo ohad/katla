@@ -10,7 +10,7 @@ import Data.List1
 import Data.List
 import Data.String
 import Data.SnocList
-
+||| Not yet used
 laTeXHeader : String
 laTeXHeader =  """
 \newcommand{\IdrisHlightFont}         {\ttfamily}
@@ -49,35 +49,17 @@ laTeXHeader =  """
 \newcommand{\IdrisComment}[1]{\RawIdrisHighlight{\IdrisHlightColourComment}{\IdrisHlightStyleComment}{#1}}
 """
 
+escapeLatex : Char -> List Char
+escapeLatex '\\' = fastUnpack "\\textbackslash{}"
+escapeLatex '{'  = fastUnpack "\\{"
+escapeLatex '}'  = fastUnpack "\\}"
+escapeLatex x    = [x]
+
 public export
-Eq Decoration where
-  Typ      == Typ      = True
-  Function == Function = True
-  Data     == Data     = True
-  Keyword  == Keyword  = True
-  Bound    == Bound    = True
-  _        == _        = False
-
-escapeLatex' : Char -> List Char
-escapeLatex' '\\' = fastUnpack "\\textbackslash{}"
-escapeLatex' '{'  = fastUnpack "\\{"
-escapeLatex' '}'  = fastUnpack "\\}"
-escapeLatex' '\n' = fastUnpack "}\n{"-- hack for now, probably going to mess up windows
-escapeLatex' x    = [x]
-
-escapeLatex : Char -> String
-escapeLatex '\\' = "\\textbackslash{}"
-escapeLatex '{'  = "\\{"
-escapeLatex '}'  = "\\}"
-escapeLatex x    = cast x
-
-
-
 annotate : Maybe Decoration -> String -> String
-annotate Nothing    s = "{\{s}}"
+annotate Nothing    s = s
 annotate (Just dec) s = apply (convert dec) s
   where
-
     convert : Decoration -> String
     convert (Typ     ) = "IdrisType"
     convert (Function) = "IdrisFunction"
@@ -89,7 +71,7 @@ annotate (Just dec) s = apply (convert dec) s
     apply f a = "\\\{f}{\{a}}"
 
 color : String -> String
-color x = "\\color{\{x}}" -- String interpolation doesn't quite work yet
+color x = "\\color{\{x}}"
 
 {- Relies on the fact that PosMap is an efficient mapping from position:
 
@@ -121,32 +103,46 @@ engine input output posMap = engine Nothing
     toString : SnocList Char -> String
     toString sx = (fastPack $ sx <>> [])
 
-    snocEscape : SnocList Char -> Char -> SnocList Char
-    snocEscape sx c = sx <>< (escapeLatex' c)
+    snocEscape : (outputChars : SnocList Char) -> (new : Char) -> SnocList Char
+    snocEscape sx c = sx <>< (escapeLatex c)
 
-    processLine : Maybe Decoration
-               -> (Int, Int)
-               -> List Char
-               -> SnocList Char
+    ||| True if input starts with EOL
+    isNotEndOfLine : List Char -> Maybe (Char, List Char)
+    isNotEndOfLine []           = Nothing
+    isNotEndOfLine ('\r' :: _ ) = Nothing
+    isNotEndOfLine ('\n' :: _ ) = Nothing
+    isNotEndOfLine (x    :: xs) = Just (x, xs)
+    
+    ship : Maybe Decoration -> (outputChars : SnocList Char) -> IO ()
+    ship decor outputChars = when (isSnoc outputChars) $ do
+      let decorated = annotate decor (toString outputChars) 
+      _ <- fPutStr output decorated
+      pure ()
+
+    processLine : (currentDecor  : Maybe Decoration)
+               -> (currentPos    : (Int, Int))
+               -> (remainingLine : List Char)
+               -> (currentOutput : SnocList Char)
                -> IO (Maybe Decoration, (Int, Int))
-    processLine currentDecor (currentRow, _) [] stk
-      = do let nextPos = (currentRow + 1, 0)
-           _ <- fPutStr output (annotate currentDecor (toString stk))
-           pure (currentDecor, nextPos)
-    processLine currentDecor currentPos@(currentRow, currentCol) (c :: rest) stk
-      = let nextPos = (currentRow, currentCol + 1)
-            decor   = findDecoration currentPos posMap
-        in if decor == currentDecor
-           then processLine currentDecor nextPos rest (snocEscape stk c)
-           else do let decorated = annotate currentDecor (toString stk)
-                   _ <- fPutStr output decorated
-                   processLine decor nextPos rest (snocEscape Empty c)
+    processLine currentDecor currentPos@(currentRow, currentCol) cs currentOutput
+      = case isNotEndOfLine cs of
+          Nothing => do 
+            let nextPos = (currentRow + 1, 0)
+            ship currentDecor currentOutput
+            _ <- fPutStrLn output ""
+            pure (currentDecor, nextPos)
+          Just (c , rest) => do
+            let (currentRow, currentCol) = currentPos
+                nextPos = (currentRow, currentCol + 1)
+                decor   = findDecoration currentPos posMap
+            if decor == currentDecor
+             then processLine currentDecor nextPos rest (snocEscape currentOutput c)
+             else do ship currentDecor currentOutput
+                     processLine decor nextPos rest (snocEscape Empty c)
 
     engine : Maybe Decoration -> (Int, Int) -> IO ()
     engine currentDecor currentPos
-      = if !(fEOF input)
-        then pure ()
-        else do
+      = when (not !(fEOF input)) $ do
           Right str <- fGetLine input
             | Left err => pure ()
           (nextDecor, nextPos) <- processLine currentDecor currentPos (fastUnpack str) Empty
@@ -158,7 +154,8 @@ main = do
   Right fin <- openFile "src/Katla.idr"  Read
     | Left err => putStrLn "Couldn't open source."
   Just fmd <- coreRun (map Just (readMetadata "build/ttc/Katla.ttm"))
-                      (const $ pure Nothing)
+                      (\err => do putStrLn $ show err
+                                  pure Nothing)
                       pure
     | Nothing => putStrLn "Couldn't open metadata"
 
