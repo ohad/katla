@@ -9,15 +9,7 @@ import Libraries.Data.PosMap
 import Data.List1
 import Data.List
 import Data.String
-
-public export
-Eq Decoration where
-  Typ      == Typ      = True
-  Function == Function = True
-  Data     == Data     = True
-  Keyword  == Keyword  = True
-  Bound    == Bound    = True
-  _        == _        = False
+import Data.Either
 
 escapeLatex' : Char -> List Char
 escapeLatex' '\\' = unpack "\\textbackslash{}"
@@ -30,7 +22,7 @@ escapeLatex '\\' = "\\textbackslash{}"
 escapeLatex '{'  = "\\{"
 escapeLatex '}'  = "\\}"
 escapeLatex x    = cast x
-      
+
 decoration : Maybe Decoration -> String
 decoration Nothing         = "black"
 decoration (Just Typ     ) = "DeepSkyBlue3"
@@ -43,7 +35,7 @@ decoration (Just Bound   ) = "DarkOrchid3"
 color : String -> String
 color x = "\\color{\{x}}" -- String interpolation doesn't quite work yet
 
-{- Relies on the fact that PosMap is an efficient mapping from position: 
+{- Relies on the fact that PosMap is an efficient mapping from position:
 
 for each character in the file, find the tightest enclosing interval
 in PosMap and use its decoration.
@@ -51,7 +43,7 @@ in PosMap and use its decoration.
 
 pickSmallest : List1 ASemanticDecoration -> Decoration
 pickSmallest ((_, decor, _) ::: []) = decor
-pickSmallest (current ::: candidate :: ds) = 
+pickSmallest (current ::: candidate :: ds) =
   let endOf : ASemanticDecoration -> (Int, Int)
       endOf ((_, (_, end)), _, _) = end
   in if (endOf candidate < endOf current)
@@ -59,7 +51,7 @@ pickSmallest (current ::: candidate :: ds) =
      else pickSmallest (current   ::: ds)
 
 findDecoration : (Int, Int) -> PosMap ASemanticDecoration -> Maybe Decoration
-findDecoration pos@(row, col) posMap = 
+findDecoration pos@(row, col) posMap =
   case dominators ((row, col), (row, col+1)) posMap of
    []              => Nothing
    (d :: ds)       => Just $ pickSmallest (d ::: ds)
@@ -72,17 +64,17 @@ engine input output posMap = engine Nothing
       let nextPos = (currentRow + 1, 0)
       _ <- fPutStr output $ color (decoration currentDecor)
       pure (currentDecor, nextPos)
-    processLine currentDecor currentPos@(currentRow, currentCol) (c :: rest) = 
-      let nextPos = (currentRow, currentCol + 1) 
+    processLine currentDecor currentPos@(currentRow, currentCol) (c :: rest) =
+      let nextPos = (currentRow, currentCol + 1)
           decor   = findDecoration currentPos posMap in
-      if decor == currentDecor 
+      if decor == currentDecor
       then do _ <- fPutStr output (escapeLatex c)
               processLine currentDecor nextPos rest
       else do _ <- fPutStr output $ color (decoration decor) ++ escapeLatex c
               processLine decor        nextPos rest
-  
+
     engine : Maybe Decoration -> (Int, Int) -> IO ()
-    engine currentDecor currentPos 
+    engine currentDecor currentPos
       = if !(fEOF input)
       then pure ()
       else do
@@ -90,7 +82,7 @@ engine input output posMap = engine Nothing
           | Left err => pure ()
         (nextDecor, nextPos) <- processLine currentDecor currentPos (fastUnpack str)
         engine nextDecor nextPos
-    
+
 main : IO ()
 main = do
   putStrLn "Katla v0.1"
@@ -100,7 +92,7 @@ main = do
                       (const $ pure Nothing)
                       pure
     | Nothing => putStrLn "Couldn't open metadata"
-  
+
   Right fout <- openFile "temp/Katla.tex" WriteTruncate
     | Left err => putStrLn "couldn't open output"
 
