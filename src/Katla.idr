@@ -10,44 +10,8 @@ import Data.List1
 import Data.List
 import Data.String
 import Data.SnocList
-||| Not yet used
-laTeXHeader : String
-laTeXHeader =  """
-\newcommand{\IdrisHlightFont}         {\ttfamily}
-\newcommand{\IdrisHlightStyleData}    {}
-\newcommand{\IdrisHlightStyleType}    {}
-\newcommand{\IdrisHlightStyleBound}   {}
-\newcommand{\IdrisHlightStyleFunction}{}
-\newcommand{\IdrisHlightStyleKeyword} {\bfseries}
-\newcommand{\IdrisHlightStyleImplicit}{\itshape}
-\newcommand{\IdrisHlightStyleComment} {\itshape}
-\newcommand{\IdrisHlightStyleHole}    {\bfseries}
 
-\newcommand{\IdrisHlightColourData}    {IndianRed1}
-\newcommand{\IdrisHlightColourType}    {DeepSkyBlue3}
-\newcommand{\IdrisHlightColourBound}   {DarkOrchid3}
-\newcommand{\IdrisHlightColourFunction}{Chartreuse4}
-\newcommand{\IdrisHlightColourKeyword} {black}
-\newcommand{\IdrisHlightColourImplicit}{Darkorchid3}
-
-\newcommand{\IdrisHlightColourComment} {grey}
-\newcommand{\IdrisHlightColourHole}    {yellow}
-
-\newcommand{\IdrisHole}[1]{{%
-    \colorbox{yellow}{%
-      \IdrisHlightStyleHole\IdrisHlightFont%
-      #1}}}
-
-\newcommand{\RawIdrisHighlight}[3]{{\textcolor{#1}{#2\IdrisHlightFont#3}}}
-
-\newcommand{\IdrisData}[1]{\RawIdrisHighlight{\IdrisHlightColourData}{\IdrisHlightStyleData}{#1}}
-\newcommand{\IdrisType}[1]{\RawIdrisHighlight{\IdrisHlightColourType}{\IdrisHlightStyleType}{#1}}
-\newcommand{\IdrisBound}[1]{\RawIdrisHighlight{\IdrisHlightColourBound}{\IdrisHlightStyleBound}{#1}}
-\newcommand{\IdrisFunction}[1]{\RawIdrisHighlight{\IdrisHlightColourFunction}{\IdrisHlightStyleFunction}{#1}}
-\newcommand{\IdrisKeyword}[1]{\RawIdrisHighlight{\IdrisHlightColourKeyword}{\IdrisHlightStyleKeyword}{#1}}
-\newcommand{\IdrisImplicit}[1]{\RawIdrisHighlight{\IdrisHlightColourImplicit}{\IdrisHlightStyleImplicit}{#1}}
-\newcommand{\IdrisComment}[1]{\RawIdrisHighlight{\IdrisHlightColourComment}{\IdrisHlightStyleComment}{#1}}
-"""
+import CLI
 
 escapeLatex : Char -> List Char
 escapeLatex '\\' = fastUnpack "\\textbackslash{}"
