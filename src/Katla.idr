@@ -11,7 +11,7 @@ import Data.List
 import Data.String
 import Data.SnocList
 
-import CLI
+import Katla.CLI
 
 escapeLatex : Char -> List Char
 escapeLatex '\\' = fastUnpack "\\textbackslash{}"
@@ -114,7 +114,8 @@ engine input output posMap = engine Nothing
 
 main : IO ()
 main = do
-  putStrLn "Katla v0.1"
+  katlaCmd.withArgs katlaExec
+  {-
   Right fin <- openFile "src/Katla.idr"  Read
     | Left err => putStrLn "Couldn't open source."
   Just fmd <- coreRun (map Just (readMetadata "build/ttc/Katla.ttm"))
@@ -131,3 +132,4 @@ main = do
   -- traverse_ (\((_, (start, end)), decor, _) => putStrLn "\{show start}:\{show end}: \{show decor}")
   --           decs
   engine fin fout fmd.semanticHighlighting (0,0)
+  -}
