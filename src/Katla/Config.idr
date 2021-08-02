@@ -9,12 +9,12 @@ import Data.Maybe
 
 %language ElabReflection
 
-
 record Category where
   constructor MkCategory
   style : String
   colour : String
 
+export
 record Config where
   constructor MkConfig
   font : String
@@ -25,6 +25,32 @@ record Config where
   keyword  : Category
   comment  : Category
   hole     : Category
+
+namespace Cat
+  export
+  (.toString) : Category -> (prefixString : String) ->
+                {default (length prefixString) prefixLength : Nat} -> String
+  cat.toString prefixString =
+    let initPadding = (prefixLength `minus` (length prefixString `minus` 2))
+        restPadding = prefixLength + 2
+    in """
+    \{prefixString}\{replicate initPadding ' '  } = { style  = \{show cat.style }
+    \{indent restPadding " = "}, colour = \{show cat.colour}}
+    """
+
+export
+(.toString) : Config -> String
+conf.toString = """
+{ font = \{show conf.font}
+\{conf.datacons.toString ", datacons" {prefixLength = length "datacons"}}
+\{conf.typecons.toString ", typecons" {prefixLength = length "datacons"}}
+\{conf.bound   .toString ", bound"    {prefixLength = length "datacons"}}
+\{conf.function.toString ", function" {prefixLength = length "datacons"}}
+\{conf.keyword .toString ", keyword"  {prefixLength = length "datacons"}}
+\{conf.comment .toString ", comment"  {prefixLength = length "datacons"}}
+\{conf.hole    .toString ", hole"     {prefixLength = length "datacons"}}
+}
+"""
 
 
 defaultConfig : Config
@@ -59,8 +85,8 @@ defaultConfig = MkConfig
     , colour = "yellow"
     }
   }
-%runElab (deriveFromDhall Record `{ Category})
-%runElab (deriveFromDhall Record `{ Config})
+%runElab (deriveFromDhall Record `{ Category })
+%runElab (deriveFromDhall Record `{ Config })
 
 ||| Not yet used
 export
@@ -104,15 +130,28 @@ laTeXHeader cfg =  """
 public export
 preambleCmd : Command "preamble"
 preambleCmd = MkCommand
-        { description = "Generate LaTeX preamble"
-        , subcommands = []
-        , modifiers =
-          [ "--config" ::= option """
-              Preamble configuration file in the following (Dhall) format:
-              """ filePath
-          ]
-        , arguments = filePath
-        }
+  { description = "Generate LaTeX preamble"
+  , subcommands = []
+  , modifiers =
+    [ "--config" ::= option """
+        Preamble configuration file in Dhall format.
+        Use `init` to generate the defaults config file.
+        """
+        filePath
+    ]
+  , arguments = filePath
+  }
+
+public export
+initCmd : Command "init"
+initCmd = MkCommand
+  { description = "Generate preamble configuration file"
+  , subcommands = []
+  , modifiers = []
+  , arguments = filePath
+  }
+
+
 
 export
 getConfiguration : (configFile : Maybe String) -> IO Config
@@ -146,3 +185,22 @@ preambleExec moutput configFile = do
 export
 preamble : (ParsedCommand Prelude.id Maybe _ Config.preambleCmd) -> IO ()
 preamble parsed = preambleExec parsed.arguments (parsed.modifiers.project "--config")
+
+export
+initExec : (moutput : Maybe String) -> IO ()
+initExec moutput = do
+  Right file <- maybe (pure $ Right stdout) (flip openFile WriteTruncate) moutput
+  | Left err => putStrLn """
+              Error while opening configuration file \{maybe "stdout" id moutput}:
+              \{show err}
+              """
+  Right () <- fPutStrLn file $ defaultConfig.toString
+  | Left err => putStrLn """
+      Error while writing preamble file \{maybe "stdout" id moutput}:
+      \{show err}
+      """
+  closeFile file
+
+export
+init : (ParsedCommand Prelude.id Maybe _ Config.initCmd) -> IO ()
+init parsed = initExec parsed.arguments

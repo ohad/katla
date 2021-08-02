@@ -14,8 +14,6 @@ Dependencies:
 
 Wishlist:
 
-+ Command line interface (for choosing input files relative to build directory, ttm location)
-+ Customisation (command-line argument, through a config file)
 + Error handling
 + Flag for generating the preamble as a stand-alone file that can be imported into a LaTeX doc
 + Flag for generating standalone document, single file and multi-file

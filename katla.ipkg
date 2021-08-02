@@ -17,6 +17,7 @@ modules
   = Katla
   , Katla.Config
   , Katla.CLI
+  , Katla.Engine
 
 
 -- main file (i.e. file to load at REPL)
